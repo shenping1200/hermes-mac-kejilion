@@ -1,8 +1,11 @@
 #!/bin/bash
 
 # ==============================================================================
-# Hermes Linux 全功能管理面板 - 无闪烁增强版
+# Hermes Linux 全功能管理面板 - 稳健版 (Fix Pipe Issue)
 # ==============================================================================
+
+# 强制将标准输入重定向到终端，解决 curl ... | bash 导致的死循环闪烁问题
+exec < /dev/tty
 
 REPO_URL="https://github.com/NousResearch/hermes-agent"
 
@@ -14,11 +17,6 @@ NC='\033[0m'
 
 HERMES_DIR="$HOME/hermes-agent"
 GATEWAY_PID_FILE="$HOME/.hermes/gateway.pid"
-
-function setup_brew_env() {
-    # Linux does not use brew, this is a placeholder for consistency
-    return 0
-}
 
 function check_sudo() {
     if [ "$EUID" -ne 0 ]; then
@@ -114,11 +112,11 @@ function uninstall_hermes() {
     fi
 }
 
-# 初始化：只在启动时清一次屏
+# 初始化
 clear
 
 while true; do
-    # 使用 ANSI 转义码 \033[H 将光标移回左上角，而不是 clear 整个屏幕
+    # 光标回顶，防止闪烁
     printf "\033[H"
     echo -e "${BLUE}====================================================${NC}"
     echo -e "${BLUE}            Hermes Linux 管理面板                   ${NC}"
@@ -134,8 +132,8 @@ while true; do
     echo -e " 0. ${YELLOW}退出${NC}"
     echo -e "${BLUE}====================================================${NC}"
     
-    # 确保 read 能够正确阻塞
-    read -p "请输入选择 [0-8]: " choice
+    # 使用 -r 避免转义，并且已经在顶部执行了 exec < /dev/tty
+    read -r -p "请输入选择 [0-8]: " choice
     
     case $choice in
         1) install_hermes ;;
