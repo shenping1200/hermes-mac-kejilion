@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# Hermes Linux 全功能管理面板 - 稳健路径版
+# Hermes Linux 全功能管理面板 - 路径绝杀版
 # ==============================================================================
 
 # 强制将标准输入重定向到终端
@@ -77,7 +77,8 @@ function start_gateway() {
     fi
     cd "$HERMES_DIR"
     echo -e "${YELLOW}🚀 正在后台启动 Gateway...${NC}"
-    nohup python gateway/run.py > "$HOME/.hermes/gateway.log" 2>&1 &
+    # 启动时同样加入 PYTHONPATH 确保路径正确
+    PYTHONPATH=$HERMES_DIR nohup python gateway/run.py > "$HOME/.hermes/gateway.log" 2>&1 &
     echo $! > "$GATEWAY_PID_FILE"
     echo -e "${GREEN}✅ Gateway 已在后台运行。日志: ~/.hermes/gateway.log${NC}"
 }
@@ -93,14 +94,16 @@ function stop_gateway() {
 
 function start_chat() {
     activate_venv || return 1
-    cd "$HERMES_DIR" && python cli.py
+    cd "$HERMES_DIR"
+    # 强制指定 PYTHONPATH
+    PYTHONPATH=$HERMES_DIR python cli.py
 }
 
 function run_setup() {
     activate_venv || return 1
     cd "$HERMES_DIR"
-    # 关键修正：使用 -m 模式运行，确保 python 能够正确识别 package 根路径
-    python -m hermes_cli.setup
+    # 终极解决方案：强制指定 PYTHONPATH 并在当前目录下运行模块
+    PYTHONPATH=$HERMES_DIR python -m hermes_cli.setup
 }
 
 function update_hermes() {
