@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # ==============================================================================
-# Hermes Linux 全功能管理面板 - 路径绝杀版
+# Hermes Linux 全功能管理面板 - 彻底纯净版 (v8.0)
 # ==============================================================================
 
-# 强制将标准输入重定向到终端
+# 1. 强制将标准输入重定向到终端，解决 curl | bash 导致的死循环和输入失效问题
 exec < /dev/tty
 
 REPO_URL="https://github.com/NousResearch/hermes-agent"
@@ -63,7 +63,7 @@ function install_hermes() {
     mkdir -p ~/.hermes
     
     echo -e "${GREEN}✅ Linux 安装成功！${NC}"
-    echo -e "${BLUE}🚀 正在自动为您跳转到配置界面，请填入您的 API Key...${NC}"
+    echo -e "${BLUE}🚀 正在自动为您跳转到配置界面...${NC}"
     sleep 1
     model_manage
     echo -e "${GREEN}✅ 配置保存成功！${NC}"
@@ -76,9 +76,9 @@ function start_gateway() {
         return
     fi
     cd "$HERMES_DIR"
+    export PYTHONPATH=$HERMES_DIR
     echo -e "${YELLOW}🚀 正在后台启动 Gateway...${NC}"
-    # 启动时同样加入 PYTHONPATH 确保路径正确
-    PYTHONPATH=$HERMES_DIR nohup python gateway/run.py > "$HOME/.hermes/gateway.log" 2>&1 &
+    nohup python3 gateway/run.py > "$HOME/.hermes/gateway.log" 2>&1 &
     echo $! > "$GATEWAY_PID_FILE"
     echo -e "${GREEN}✅ Gateway 已在后台运行。日志: ~/.hermes/gateway.log${NC}"
 }
@@ -95,15 +95,17 @@ function stop_gateway() {
 function start_chat() {
     activate_venv || return 1
     cd "$HERMES_DIR"
-    # 强制指定 PYTHONPATH
-    PYTHONPATH=$HERMES_DIR python cli.py
+    export PYTHONPATH=$HERMES_DIR
+    python3 cli.py
 }
 
 function run_setup() {
     activate_venv || return 1
     cd "$HERMES_DIR"
-    # 终极解决方案：强制指定 PYTHONPATH 并在当前目录下运行模块
-    PYTHONPATH=$HERMES_DIR python -m hermes_cli.setup
+    echo -e "${BLUE}⚙️ 正在启动初始化配置向导...${NC}"
+    # 终极方案：强制指定 PYTHONPATH，使用 python3 -u 确保输出不被缓冲，捕捉所有错误
+    export PYTHONPATH=$HERMES_DIR
+    python3 -u -m hermes_cli.setup 2>&1
 }
 
 function update_hermes() {
@@ -124,9 +126,9 @@ function uninstall_hermes() {
     fi
 }
 
-clear
 while true; do
-    printf "\033[H"
+    # 回归 clear，解决重叠问题。因为已加入 exec < /dev/tty，所以不再闪烁。
+    clear
     echo -e "${BLUE}====================================================${NC}"
     echo -e "${BLUE}            Hermes Linux 管理面板                   ${NC}"
     echo -e "${BLUE}====================================================${NC}"
