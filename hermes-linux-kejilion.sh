@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # ==============================================================================
-# Hermes Linux 全功能管理面板 - 稳健版 (Fix Pipe Issue)
+# Hermes Linux 全功能管理面板 - 一条龙顺畅版
 # ==============================================================================
 
-# 强制将标准输入重定向到终端，解决 curl ... | bash 导致的死循环闪烁问题
+# 强制将标准输入重定向到终端
 exec < /dev/tty
 
 REPO_URL="https://github.com/NousResearch/hermes-agent"
@@ -33,6 +33,20 @@ function activate_venv() {
     fi
 }
 
+# --- 配置管理 (提前定义以便安装函数调用) ---
+function model_manage() {
+    if [ -f "$HOME/.hermes/.env" ]; then
+        echo -e "${YELLOW}📝 正在打开 .env 配置文件...${NC}"
+        nano "$HOME/.hermes/.env"
+    else
+        echo -e "${YELLOW}📝 正在为您创建并配置 .env 文件...${NC}"
+        mkdir -p "$HOME/.hermes"
+        touch "$HOME/.hermes/.env"
+        nano "$HOME/.hermes/.env"
+    fi
+}
+
+# 1. 安装 Hermes Agent
 function install_hermes() {
     check_sudo
     echo -e "${YELLOW}📦 正在安装 Linux 基础依赖 (Git & Python 3.11)...${NC}"
@@ -49,7 +63,12 @@ function install_hermes() {
     pip install --upgrade pip
     pip install -r requirements.txt
     mkdir -p ~/.hermes
+    
     echo -e "${GREEN}✅ Linux 安装成功！${NC}"
+    echo -e "${BLUE}🚀 正在自动为您跳转到配置界面，请填入您的 API Key...${NC}"
+    sleep 1
+    model_manage
+    echo -e "${GREEN}✅ 配置保存成功！${NC}"
 }
 
 function start_gateway() {
@@ -71,16 +90,6 @@ function stop_gateway() {
         echo -e "${GREEN}✅ Gateway 已停止。${NC}"
     else
         echo -e "${RED}❌ 未发现运行中的 Gateway。${NC}"
-    fi
-}
-
-function model_manage() {
-    if [ -f "$HOME/.hermes/.env" ]; then
-        nano "$HOME/.hermes/.env"
-    else
-        echo -e "${YELLOW}📝 正在创建 .env 文件...${NC}"
-        touch "$HOME/.hermes/.env"
-        nano "$HOME/.hermes/.env"
     fi
 }
 
@@ -112,11 +121,8 @@ function uninstall_hermes() {
     fi
 }
 
-# 初始化
 clear
-
 while true; do
-    # 光标回顶，防止闪烁
     printf "\033[H"
     echo -e "${BLUE}====================================================${NC}"
     echo -e "${BLUE}            Hermes Linux 管理面板                   ${NC}"
@@ -132,7 +138,6 @@ while true; do
     echo -e " 0. ${YELLOW}退出${NC}"
     echo -e "${BLUE}====================================================${NC}"
     
-    # 使用 -r 避免转义，并且已经在顶部执行了 exec < /dev/tty
     read -r -p "请输入选择 [0-8]: " choice
     
     case $choice in
