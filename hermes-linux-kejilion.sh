@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# Hermes Linux 全功能管理面板 - 一条龙顺畅版
+# Hermes Linux 全功能管理面板 - 稳健路径版
 # ==============================================================================
 
 # 强制将标准输入重定向到终端
@@ -33,7 +33,6 @@ function activate_venv() {
     fi
 }
 
-# --- 配置管理 (提前定义以便安装函数调用) ---
 function model_manage() {
     if [ -f "$HOME/.hermes/.env" ]; then
         echo -e "${YELLOW}📝 正在打开 .env 配置文件...${NC}"
@@ -46,7 +45,6 @@ function model_manage() {
     fi
 }
 
-# 1. 安装 Hermes Agent
 function install_hermes() {
     check_sudo
     echo -e "${YELLOW}📦 正在安装 Linux 基础依赖 (Git & Python 3.11)...${NC}"
@@ -100,7 +98,9 @@ function start_chat() {
 
 function run_setup() {
     activate_venv || return 1
-    cd "$HERMES_DIR" && python hermes_cli/setup.py
+    cd "$HERMES_DIR"
+    # 关键修正：使用 -m 模式运行，确保 python 能够正确识别 package 根路径
+    python -m hermes_cli.setup
 }
 
 function update_hermes() {
