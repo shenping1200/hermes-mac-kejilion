@@ -1,22 +1,26 @@
 #!/bin/bash
 
 # ==============================================================================
-# Hermes Linux 全功能管理面板 - 彻底纯净版 (v8.0)
+# Hermes Linux 全功能管理面板 - 工业标准版 (v10.0)
+# 架构参考: kejilion.sh
 # ==============================================================================
 
-# 1. 强制将标准输入重定向到终端，解决 curl | bash 导致的死循环和输入失效问题
+# 强制绑定 TTY，解决 curl | bash 导致的交互失效
 exec < /dev/tty
 
+# --- 配置区 ---
 REPO_URL="https://github.com/NousResearch/hermes-agent"
+HERMES_DIR="$HOME/hermes-agent"
+GATEWAY_PID_FILE="$HOME/.hermes/gateway.pid"
 
+# 颜色定义
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-HERMES_DIR="$HOME/hermes-agent"
-GATEWAY_PID_FILE="$HOME/.hermes/gateway.pid"
+# --- 核心函数 ---
 
 function check_sudo() {
     if [ "$EUID" -ne 0 ]; then
@@ -34,53 +38,47 @@ function activate_venv() {
 }
 
 function model_manage() {
-    if [ -f "$HOME/.hermes/.env" ]; then
-        echo -e "${YELLOW}📝 正在打开 .env 配置文件...${NC}"
-        nano "$HOME/.hermes/.env"
-    else
-        echo -e "${YELLOW}📝 正在为您创建并配置 .env 文件...${NC}"
-        mkdir -p "$HOME/.hermes"
-        touch "$HOME/.hermes/.env"
-        nano "$HOME/.hermes/.env"
-    fi
+    mkdir -p "$HOME/.hermes"
+    echo -e "${YELLOW}📝 正在打开 .env 配置文件...${NC}"
+    nano "$HOME/.hermes/.env"
 }
 
 function install_hermes() {
     check_sudo
-    echo -e "${YELLOW}📦 正在安装 Linux 基础依赖 (Git & Python 3.11)...${NC}"
+    echo -e "${YELLOW}📦 正在安装 Linux 基础依赖...${NC}"
     sudo apt-get update -y
     sudo apt-get install -y git python3.11 python3.11-venv python3-pip
+    
     if [ ! -d "$HERMES_DIR" ]; then
-        echo -e "${YELLOW}📂 正在克隆 Hermes 本体代码...${NC}"
+        echo -e "${YELLOW}📂 正在克隆 Hermes 代码...${NC}"
         git clone $REPO_URL "$HERMES_DIR"
     fi
+    
     cd "$HERMES_DIR"
-    echo -e "${YELLOW}🐍 配置虚拟环境并安装依赖...${NC}"
+    echo -e "${YELLOW}🐍 构建虚拟环境...${NC}"
     python3.11 -m venv venv
     source venv/bin/activate
     pip install --upgrade pip
     pip install -r requirements.txt
     mkdir -p ~/.hermes
     
-    echo -e "${GREEN}✅ Linux 安装成功！${NC}"
-    echo -e "${BLUE}🚀 正在自动为您跳转到配置界面...${NC}"
+    echo -e "${GREEN}✅ 安装成功！${NC}"
     sleep 1
     model_manage
-    echo -e "${GREEN}✅ 配置保存成功！${NC}"
 }
 
 function start_gateway() {
     activate_venv || return 1
     if [ -f "$GATEWAY_PID_FILE" ]; then
-        echo -e "${RED}⚠️ Gateway 已经在运行中 (PID: $(cat $GATEWAY_PID_FILE))${NC}"
+        echo -e "${RED}⚠️ Gateway 已在运行 (PID: $(cat $GATEWAY_PID_FILE))${NC}"
         return
     fi
     cd "$HERMES_DIR"
     export PYTHONPATH=$HERMES_DIR
-    echo -e "${YELLOW}🚀 正在后台启动 Gateway...${NC}"
+    echo -e "${YELLOW}🚀 启动 Gateway (后台)...${NC}"
     nohup python3 gateway/run.py > "$HOME/.hermes/gateway.log" 2>&1 &
     echo $! > "$GATEWAY_PID_FILE"
-    echo -e "${GREEN}✅ Gateway 已在后台运行。日志: ~/.hermes/gateway.log${NC}"
+    echo -e "${GREEN}✅ 已运行。日志: ~/.hermes/gateway.log${NC}"
 }
 
 function stop_gateway() {
@@ -96,38 +94,46 @@ function start_chat() {
     activate_venv || return 1
     cd "$HERMES_DIR"
     export PYTHONPATH=$HERMES_DIR
+    export TERM=xterm-256color
     python3 cli.py
 }
 
 function run_setup() {
     activate_venv || return 1
     cd "$HERMES_DIR"
-    echo -e "${BLUE}⚙️ 正在启动初始化配置向导...${NC}"
-    # 终极方案：强制指定 PYTHONPATH，使用 python3 -u 确保输出不被缓冲，捕捉所有错误
+    echo -e "${BLUE}⚙️ 启动初始化配置向导...${NC}"
+    
+    # 工业级调用方式：
+    # 1. 强制环境变量
     export PYTHONPATH=$HERMES_DIR
-    python3 -u -m hermes_cli.setup 2>&1
+    export TERM=xterm-256color
+    export COLORTERM=truecolor
+    
+    # 2. 直接运行脚本文件（避开模块路径解析坑）
+    # 使用 python3 -u 确保 TUI 输出实时同步
+    python3 -u hermes_cli/setup.py 2>&1
 }
 
 function update_hermes() {
     activate_venv || return 1
     cd "$HERMES_DIR"
-    echo -e "${YELLOW}🔄 正在拉取最新代码并更新依赖...${NC}"
+    echo -e "${YELLOW}🔄 更新代码与依赖...${NC}"
     git pull && pip install -r requirements.txt
     echo -e "${GREEN}✅ 更新完成！${NC}"
 }
 
 function uninstall_hermes() {
-    echo -e "${RED}⚠️ 确定要彻底卸载 Hermes 吗？(y/n)${NC}"
+    echo -e "${RED}⚠️ 确定卸载吗？(y/n)${NC}"
     read -r confirm
     if [ "$confirm" == "y" ]; then
         stop_gateway
         rm -rf "$HERMES_DIR" "$HOME/.hermes"
-        echo -e "${GREEN}✅ 已全部卸载。${NC}"
+        echo -e "${GREEN}✅ 已卸载。${NC}"
     fi
 }
 
+# --- 主菜单循环 ---
 while true; do
-    # 回归 clear，解决重叠问题。因为已加入 exec < /dev/tty，所以不再闪烁。
     clear
     echo -e "${BLUE}====================================================${NC}"
     echo -e "${BLUE}            Hermes Linux 管理面板                   ${NC}"
