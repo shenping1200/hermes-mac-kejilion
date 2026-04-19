@@ -77,7 +77,7 @@ Write-Host "========================================" -ForegroundColor Green
 Write-Host "安装路径: C:\hermes-agent" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "常用命令：" -ForegroundColor Yellow
-Write-Host "   cd C:\hermes-agent && uv run hermes doctor" -ForegroundColor White
+Write-Host "   cd C:\hermes-agent && uv run hermes setup" -ForegroundColor White
 Write-Host ""
 Write-Host "安装完成！欢迎使用 Hermes Agent。" -ForegroundColor Green
 Write-Host ""
